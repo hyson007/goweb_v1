@@ -4,22 +4,29 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gorilla/mux"
 )
 
-func handleFunc(w http.ResponseWriter, r *http.Request) {
+func home(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, "<h1>welcome to my awesome site </h1>")
 }
 
-func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+func contact(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "To Get in Touch, please email to <a href=\"mailto:support@lenslock.com\">support@lenslock.com</a>")
+}
+
+func faq(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, "<h1>Frequently asked questions</h1><p>Here is a list of commmonly asked questions.</p>")
 }
 
 func main() {
-	router := httprouter.New()
-	// router.GET("/", Index)
-	router.GET("/hello/:name", Hello)
-	// http.HandleFunc("/", handleFunc)
-	http.ListenAndServe(":3000", router)
+	r := mux.NewRouter()
+	r.HandleFunc("/", home)
+	r.HandleFunc("/contact", contact)
+	r.HandleFunc("/faq", faq)
+	http.ListenAndServe(":3000", r)
 
 }
