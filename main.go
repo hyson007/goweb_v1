@@ -9,6 +9,7 @@ import (
 )
 
 var homeTemplate *template.Template
+var contactTemplate *template.Template
 
 func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
@@ -19,7 +20,9 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprint(w, "To Get in Touch, please email to <a href=\"mailto:support@lenslock.com\">support@lenslock.com</a>")
+	if err := contactTemplate.Execute(w, nil); err != nil {
+		panic(err)
+	}
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +34,18 @@ func main() {
 	// reason to initate err here is to ensure homeTemplate is using the global variable
 
 	var err error
-	homeTemplate, err = template.ParseFiles("views/home.gohtml")
+	homeTemplate, err = template.ParseFiles(
+		"views/home.gohtml",
+		"views/layout/footer.gohtml",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	contactTemplate, err = template.ParseFiles(
+		"views/contact.gohtml",
+		"views/layout/footer.gohtml",
+	)
 	if err != nil {
 		panic(err)
 	}
