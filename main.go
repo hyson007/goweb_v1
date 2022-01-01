@@ -18,17 +18,12 @@ func home(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	// we need to change from Execute to ExecuteTemplate to indicate the name of template.
 	// homeView.Layout in this case is set to "bootstrap", which matches the boostrap template name.
-
-	if err := homeView.Template.ExecuteTemplate(w, homeView.Layout, nil); err != nil {
-		panic(err)
-	}
+	must(homeView.Render(w, nil))
 }
 
 func contact(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	if err := contactView.Template.ExecuteTemplate(w, contactView.Layout, nil); err != nil {
-		panic(err)
-	}
+	must(contactView.Render(w, nil))
 }
 
 func faq(w http.ResponseWriter, r *http.Request) {
@@ -48,4 +43,10 @@ func main() {
 	r.HandleFunc("/faq", faq)
 	http.ListenAndServe(":3000", r)
 
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }
