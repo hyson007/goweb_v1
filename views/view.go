@@ -12,6 +12,7 @@ var (
 )
 
 func NewView(layout string, files ...string) *View {
+
 	// using a function to get all gohtml under views/layout folder
 	filesList, err := filepath.Glob(LayoutDir + "*" + LayoutExt)
 	if err != nil {
@@ -19,6 +20,7 @@ func NewView(layout string, files ...string) *View {
 	}
 
 	files = append(files, filesList...)
+
 	t, err := template.ParseFiles(files...)
 	if err != nil {
 		panic(err)
@@ -33,5 +35,12 @@ type View struct {
 }
 
 func (v View) Render(w http.ResponseWriter, data interface{}) error {
+	w.Header().Set("Content-Type", "text/html")
 	return v.Template.ExecuteTemplate(w, v.Layout, data)
+}
+
+func (v View) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if err := v.Render(w, nil); err != nil {
+		panic(err)
+	}
 }
