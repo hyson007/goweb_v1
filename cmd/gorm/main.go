@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"goweb_v1/models"
 	"os"
 	"strings"
 
@@ -47,25 +48,60 @@ type Order struct {
 func main() {
 	psqlinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
-	db, err := gorm.Open("postgres", psqlinfo)
-	defer db.Close()
+	db, err := models.NewUserService(psqlinfo)
 	if err != nil {
 		panic(err)
 	}
+
+	// db.ResetDB()
+	// usr, err := db.ByID(2)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(usr)
+
+	// user := &models.User{
+	// 	Name:  "jijo",
+	// 	Email: "jijo@test.com",
+	// }
+
+	// if err := db.Create(user); err != nil {
+	// 	panic(err)
+	// }
+
+	// user.Email = "jijo2@test.com"
+
+	// if err := db.Update(user); err != nil {
+	// 	panic(err)
+	// }
+
+	// emailUsr, err := db.ByEmail("jijo2@test.com")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(emailUsr)
+
+	db.Delete(1)
+
+	// db, err := gorm.Open("postgres", psqlinfo)
+	// defer db.Close()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// if err = db.DB().Ping(); err != nil {
 	// 	panic(err)
 	// }
 
 	// showing SQL command runs in the backgroud, have to enable first...
-	db.LogMode(true)
+	// db.LogMode(true)
 
 	// dropping table
 	//db.DropTableIfExists(&User{})
 
 	// passing an empty object and it knows how to migrate
 	// if struct has some new field, it will kick in auto migration.
-	db.AutoMigrate(&User{}, &Order{})
+	// db.AutoMigrate(&User{}, &Order{})
 
 	//fmt.Println(db)
 
@@ -88,7 +124,7 @@ func main() {
 	// fmt.Printf("+%v\n", u)
 
 	// different ways to query
-	var u User
+	// var u User
 	// db.First(&u)
 	// fmt.Println(u)
 
@@ -125,18 +161,18 @@ func main() {
 	// }
 
 	//create orders for a few users
-	if err := db.First(&u).Error; err != nil {
-		panic(err)
-	}
-	// CreateOrders(db, u, 100, "description for orders1")
-	// CreateOrders(db, u, 888, "description for orders2")
-	// CreateOrders(db, u, 444, "description for orders3")
+	// if err := db.First(&u).Error; err != nil {
+	// 	panic(err)
+	// }
+	// // CreateOrders(db, u, 100, "description for orders1")
+	// // CreateOrders(db, u, 888, "description for orders2")
+	// // CreateOrders(db, u, 444, "description for orders3")
 
-	// relational query
-	if err := db.Preload("Orders").First(&u).Error; err != nil {
-		panic(err)
-	}
-	fmt.Println(u)
+	// // relational query
+	// if err := db.Preload("Orders").First(&u).Error; err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(u)
 }
 
 func getInfoFromKeyboard() (name, email string) {
