@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"goweb_v1/controllers"
+	"goweb_v1/models"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -38,6 +39,14 @@ func faq(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "<h1>Frequently asked questions</h1><p>Here is a list of commmonly asked questions.</p>")
 }
 
+const (
+	host     = "localhost"
+	port     = "5432"
+	user     = "baloo"
+	password = "junglebook"
+	dbname   = "lenslocked"
+)
+
 func main() {
 	// reason to initate err here is to ensure homeTemplate is using the global variable
 
@@ -45,10 +54,18 @@ func main() {
 	// contactView = views.NewView("bootstrap", "views/contact.gohtml")
 
 	// signupView = controllers.NewUsers().NewView
+	psqlinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+
+	us, err := models.NewUserService(psqlinfo)
+	if err != nil {
+		panic(err)
+	}
+
+	defer us.Close()
 
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers()
+	usersC := controllers.NewUsers(us)
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 
