@@ -12,6 +12,8 @@ var (
 	// general error when resource is not found in db
 	ErrNotFound  = errors.New("models: resource not found")
 	ErrInvalidID = errors.New("models: Invalid User ID")
+	//ErrInvalidEmail = errors.New("models: Invalid User Email provided")
+	ErrInvalidPwd = errors.New("models: Invalid User Password provided")
 )
 
 const userPWPepper = "secret-random-string"
@@ -61,6 +63,29 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 	default:
 		return nil, err
 	}
+}
+
+// Authenticate can be used to authenticate a user with the provided email
+// address and password
+func (us *UserService) Authenticate(email, password string) (*User, error) {
+	foundUser, err := us.ByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(password)
+	err = bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), []byte(password+userPWPepper))
+
+	if err != nil {
+		switch err {
+		case bcrypt.ErrMismatchedHashAndPassword:
+			return nil, ErrInvalidPwd
+		default:
+			// below err is from bcrypt
+			return nil, err
+		}
+	}
+
+	return foundUser, nil
 }
 
 // create user

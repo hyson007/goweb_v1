@@ -11,13 +11,15 @@ import (
 // this function will panic if template is unable to parse
 func NewUsers(us *models.UserService) *Users {
 	return &Users{
-		NewView: views.NewView("bootstrap", "views/users/new.gohtml"),
-		us:      us,
+		NewView:   views.NewView("bootstrap", "views/users/new.gohtml"),
+		LoginView: views.NewView("bootstrap", "views/users/login.gohtml"),
+		us:        us,
 	}
 }
 
 type Users struct {
-	NewView *views.View
+	NewView   *views.View
+	LoginView *views.View
 	// CreateView *views.View
 	us *models.UserService
 }
@@ -28,6 +30,12 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 	if err := u.NewView.Render(w, nil); err != nil {
 		panic(err)
 	}
+}
+
+type SignupForm struct {
+	Name     string `schema:"name"`
+	Email    string `schema:"email"`
+	Password string `schema:"password"`
 }
 
 // this is used to process the signup form where a user is submit in order to create a new account
@@ -50,8 +58,31 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, user)
 }
 
-type SignupForm struct {
-	Name     string `schema:"name"`
+type LoginForm struct {
 	Email    string `schema:"email"`
 	Password string `schema:"password"`
+}
+
+// Login is used to verify provided email and password
+// POST /login
+func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
+	var form LoginForm
+	if err := parseFormHelper(r, &form); err != nil {
+		panic(err)
+	}
+	// Do something with login Form
+
+	user, err := u.us.Authenticate(form.Email, form.Password)
+	switch err {
+	case models.ErrNotFound:
+		fmt.Fprintln(w, "Invalid user email address")
+	case models.ErrInvalidPwd:
+		fmt.Fprintln(w, "Invalid user password")
+	case nil:
+		fmt.Fprintln(w, user)
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// fmt.Fprintln(w, form)
 }
