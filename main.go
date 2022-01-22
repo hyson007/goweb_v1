@@ -62,6 +62,7 @@ func main() {
 	}
 
 	defer us.Close()
+	// us.ResetDB()
 
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()

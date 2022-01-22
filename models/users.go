@@ -5,6 +5,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -12,6 +13,8 @@ var (
 	ErrNotFound  = errors.New("models: resource not found")
 	ErrInvalidID = errors.New("models: Invalid User ID")
 )
+
+const userPWPepper = "secret-random-string"
 
 func NewUserService(connectionInfo string) (*UserService, error) {
 
@@ -62,6 +65,17 @@ func (us *UserService) ByEmail(email string) (*User, error) {
 
 // create user
 func (us *UserService) Create(u *User) error {
+	//adding pepper into user pwd
+	pwByte := []byte(u.Password + userPWPepper)
+
+	//bcrypto takes a byte of string
+	hashByte, err := bcrypt.GenerateFromPassword(pwByte, bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	u.PasswordHash = string(hashByte)
+	// not required but good exercies
+	u.Password = ""
 	return us.db.Create(u).Error
 }
 
@@ -93,6 +107,8 @@ func (us *UserService) ResetDB() {
 
 type User struct {
 	gorm.Model
-	Name  string
-	Email string `gorm:"unique_index; non null"`
+	Name         string
+	Email        string `gorm:"unique_index; non null"`
+	Password     string `gorm:"-"` // ignore this in DB
+	PasswordHash string `gorm:"not null"`
 }
