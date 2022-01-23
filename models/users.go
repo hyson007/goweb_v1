@@ -2,6 +2,8 @@ package models
 
 import (
 	"errors"
+	"goweb_v1/hash"
+	"goweb_v1/rand"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -17,6 +19,7 @@ var (
 )
 
 const userPWPepper = "secret-random-string"
+const hmacSecretKey = "whatever"
 
 func NewUserService(connectionInfo string) (*UserService, error) {
 
@@ -27,11 +30,23 @@ func NewUserService(connectionInfo string) (*UserService, error) {
 	}
 	// defer db.Close()
 	// it's not good to leave this close in this function, but rather it should be in a seperate func to close it
-	return &UserService{db: db}, nil
+	hmac := hash.NewHMAC(hmacSecretKey)
+	return &UserService{db: db, hmac: hmac}, nil
 }
 
 type UserService struct {
-	db *gorm.DB
+	db   *gorm.DB
+	hmac hash.HMAC
+}
+
+type User struct {
+	gorm.Model
+	Name         string
+	Email        string `gorm:"unique_index; non null"`
+	Password     string `gorm:"-"` // ignore this in DB
+	PasswordHash string `gorm:"not null"`
+	Remember     string `gorm:"-"`
+	RememberHash string `gorm:"unique_index; non null"`
 }
 
 //ByID will lookup user by the ID provided
@@ -55,6 +70,42 @@ func (us *UserService) ByID(id uint) (*User, error) {
 func (us *UserService) ByEmail(email string) (*User, error) {
 	var u User
 	err := us.db.Where("email = ?", email).First(&u).Error
+	switch err {
+	case nil:
+		return &u, nil
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+// By Remember looks up a user with the given token and returns that user,
+// the method will handle the hashing the token for us
+func (us *UserService) ByRemember(token string) (*User, error) {
+	hashedToken := us.hmac.Hash(token)
+	var u User
+
+	// gorm by default use snake case for column name
+	// https://gorm.io/docs/conventions.html
+
+	// 	Column db name uses the field’s name’s snake_case by convention.
+
+	// type User struct {
+	//   ID        uint      // column name is `id`
+	//   Name      string    // column name is `name`
+	//   Birthday  time.Time // column name is `birthday`
+	//   CreatedAt time.Time // column name is `created_at`
+	// }
+	// You can override the column name with tag column or use NamingStrategy
+
+	// type Animal struct {
+	//   AnimalID int64     `gorm:"column:beast_id"`         // set name to `beast_id`
+	//   Birthday time.Time `gorm:"column:day_of_the_beast"` // set name to `day_of_the_beast`
+	//   Age      int64     `gorm:"column:age_of_the_beast"` // set name to `age_of_the_beast`
+	// }
+
+	err := us.db.Where("remember_hash = ?", hashedToken).First(&u).Error
 	switch err {
 	case nil:
 		return &u, nil
@@ -101,11 +152,29 @@ func (us *UserService) Create(u *User) error {
 	u.PasswordHash = string(hashByte)
 	// not required but good exercies
 	u.Password = ""
+
+	// have a check for user, if no remember we set one.
+	// and we should have a cookie whenever user create new account
+
+	if u.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+		u.Remember = token
+	}
+
+	//now all users should have remember cookie then we create a hash for it
+	u.RememberHash = us.hmac.Hash(u.Remember)
 	return us.db.Create(u).Error
 }
 
 // update user
 func (us *UserService) Update(u *User) error {
+	if u.Remember != "" {
+		u.RememberHash = us.hmac.Hash(u.Remember)
+	}
+
 	return us.db.Save(u).Error
 }
 
@@ -128,12 +197,4 @@ func (us *UserService) Close() error {
 func (us *UserService) ResetDB() {
 	us.db.DropTableIfExists(&User{})
 	us.db.AutoMigrate(&User{})
-}
-
-type User struct {
-	gorm.Model
-	Name         string
-	Email        string `gorm:"unique_index; non null"`
-	Password     string `gorm:"-"` // ignore this in DB
-	PasswordHash string `gorm:"not null"`
 }

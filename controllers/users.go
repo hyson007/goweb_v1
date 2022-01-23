@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"goweb_v1/models"
+	"goweb_v1/rand"
 	"goweb_v1/views"
 	"net/http"
 )
@@ -58,7 +59,11 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 	// here this user is not a pointer hence need &
 	// once user created, we can just assign a cookie back
-	signIn(w, &user)
+	err := u.signIn(w, &user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	// fmt.Fprintln(w, user)
 
 	//redirect user to cookietest page
@@ -94,7 +99,12 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// once login successfully, we can assign a cookie to user
-	signIn(w, user)
+	err = u.signIn(w, user)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	// fmt.Fprintln(w, user)
 
 	//redirect user to cookietest page
@@ -113,21 +123,53 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 //Create a new func just for setting cookie part
-func signIn(w http.ResponseWriter, user *models.User) {
+// func signIn(w http.ResponseWriter, user *models.User) {
+// 	cookie := http.Cookie{
+// 		Name:  "email",
+// 		Value: user.Email,
+// 	}
+// 	http.SetCookie(w, &cookie)
+// 	// fmt.Fprintln(w, user)
+// }
+
+//convert this func to receiver on user
+//sign in is used to sign the given user in via cookies
+func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
+
+	//this step ensures whatever user in DB has a tokenhash
+	if user.Remember == "" {
+		token, err := rand.RememberToken()
+		if err != nil {
+			return err
+		}
+		user.Remember = token
+		err = u.us.Update(user)
+		if err != nil {
+			return err
+		}
+	}
+
 	cookie := http.Cookie{
-		Name:  "email",
-		Value: user.Email,
+		Name:     "remember_token",
+		Value:    user.Remember,
+		HttpOnly: true,
 	}
 	http.SetCookie(w, &cookie)
 	// fmt.Fprintln(w, user)
+	return nil
 }
 
 //CookieTest is used to display cookies set on the current user
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("email")
+	cookie, err := r.Cookie("remember_token")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	fmt.Fprintln(w, "Email cookie is", cookie.Value)
-	fmt.Fprintln(w, cookie)
+
+	user, err := u.us.ByRemember(cookie.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	fmt.Fprintln(w, "remember_token cookie is", cookie.Value)
+	fmt.Fprintln(w, user)
 }
