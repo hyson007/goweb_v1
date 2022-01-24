@@ -44,8 +44,55 @@ type UserDB interface {
 	DestructiveReset() error
 }
 
-func NewUserService(connectionInfo string) (*UserService, error) {
-	ug, err := NewUserGorm(connectionInfo)
+// UserService is a set of methods used to manipulate and work
+// with the user model
+type UserService interface {
+	// Authenticate will verify the proovided email/pwd,
+	// if they are correct, they user corresponding to that
+	// email will be returned, otherwise you will receive either
+	// ErrNotFound, ErrInvalidPassword or another error if thing
+	// goes wrong
+	Authenticate(email, password string) (*User, error)
+	UserDB
+}
+
+// User represent the user model we stored in DB
+type User struct {
+	gorm.Model
+	Name         string
+	Email        string `gorm:"unique_index; non null"`
+	Password     string `gorm:"-"` // ignore this in DB
+	PasswordHash string `gorm:"not null"`
+	Remember     string `gorm:"-"`
+	RememberHash string `gorm:"unique_index; non null"`
+}
+
+// Authenticate can be used to authenticate a user with the provided email
+// address and password
+// we will leave this func under User Service not User Gorm as it's not DB write
+func (us *userService) Authenticate(email, password string) (*User, error) {
+	foundUser, err := us.ByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Println(password)
+	err = bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), []byte(password+userPWPepper))
+
+	if err != nil {
+		switch err {
+		case bcrypt.ErrMismatchedHashAndPassword:
+			return nil, ErrInvalidPwd
+		default:
+			// below err is from bcrypt
+			return nil, err
+		}
+	}
+
+	return foundUser, nil
+}
+
+func NewUserService(connectionInfo string) (UserService, error) {
+	ug, err := newUserGorm(connectionInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -58,16 +105,23 @@ func NewUserService(connectionInfo string) (*UserService, error) {
 	// // defer db.Close()
 	// // it's not good to leave this close in this function, but rather it should be in a seperate func to close it
 	// hmac := hash.NewHMAC(hmacSecretKey)
-	return &UserService{
+
+	//when we return interface, we are essentially return a struct
+	// which has implemented what method that interface demand!!!
+	return &userService{
 		UserDB: &userValidator{
 			UserDB: ug,
 		},
 	}, nil
 }
 
-type UserService struct {
+// this name can be anything
+type userService struct {
 	UserDB
 }
+
+// add a checker
+var _ UserService = &userService{}
 
 type userValidator struct {
 	UserDB
@@ -77,8 +131,16 @@ type userValidator struct {
 // or if userGorm implements the correct UserDB all interfaces or not
 var _ UserDB = &userGorm{}
 
+// making userValidator implements UserDB
+var _ UserDB = &userValidator{}
+
+type userGorm struct {
+	db   *gorm.DB
+	hmac hash.HMAC
+}
+
 // write a method create userGorm
-func NewUserGorm(connectionInfo string) (*userGorm, error) {
+func newUserGorm(connectionInfo string) (*userGorm, error) {
 
 	db, err := gorm.Open("postgres", connectionInfo)
 	db.LogMode(true)
@@ -89,21 +151,6 @@ func NewUserGorm(connectionInfo string) (*userGorm, error) {
 	// it's not good to leave this close in this function, but rather it should be in a seperate func to close it
 	hmac := hash.NewHMAC(hmacSecretKey)
 	return &userGorm{db: db, hmac: hmac}, nil
-}
-
-type userGorm struct {
-	db   *gorm.DB
-	hmac hash.HMAC
-}
-
-type User struct {
-	gorm.Model
-	Name         string
-	Email        string `gorm:"unique_index; non null"`
-	Password     string `gorm:"-"` // ignore this in DB
-	PasswordHash string `gorm:"not null"`
-	Remember     string `gorm:"-"`
-	RememberHash string `gorm:"unique_index; non null"`
 }
 
 //ByID will lookup user by the ID provided
@@ -211,30 +258,6 @@ func (ug *userGorm) ByRemember(token string) (*User, error) {
 	default:
 		return nil, err
 	}
-}
-
-// Authenticate can be used to authenticate a user with the provided email
-// address and password
-// we will leave this func under User Service not User Gorm as it's not DB write
-func (us *UserService) Authenticate(email, password string) (*User, error) {
-	foundUser, err := us.ByEmail(email)
-	if err != nil {
-		return nil, err
-	}
-	// fmt.Println(password)
-	err = bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), []byte(password+userPWPepper))
-
-	if err != nil {
-		switch err {
-		case bcrypt.ErrMismatchedHashAndPassword:
-			return nil, ErrInvalidPwd
-		default:
-			// below err is from bcrypt
-			return nil, err
-		}
-	}
-
-	return foundUser, nil
 }
 
 // create user
