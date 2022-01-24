@@ -34,29 +34,31 @@ import (
 // }
 
 type Animal struct {
-	jiao
+	speaker
 }
 
-type jiao interface {
+type speaker interface {
 	speak()
 }
 
-type Cat struct{}
-type Dog struct{}
+type Cat struct {
+}
+
+type Fenail struct {
+	speaker
+}
 
 func (c Cat) speak() {
 	fmt.Println("cat")
 }
 
-func (d Dog) speak() {
-	fmt.Println("dog")
+func (f Fenail) speak() {
+	fmt.Print("Prefix: ....")
+	f.speaker.speak()
 }
 
 func main() {
-	d := Animal{Cat{}}
-	d.speak()
-
-	d = Animal{Dog{}}
+	d := Animal{&Fenail{Cat{}}}
 	d.speak()
 
 }
