@@ -37,3 +37,13 @@ func String(nBytes int) (string, error) {
 func RememberToken() (string, error) {
 	return String(RememberTokenByte)
 }
+
+//NBytes return the number of bytes used in the base64 URL encoded string.
+func NBytes(base64string string) (int, error) {
+	b, err := base64.URLEncoding.DecodeString(base64string)
+	if err != nil {
+		return -1, err
+	}
+	return len(b), nil
+
+}

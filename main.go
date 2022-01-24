@@ -62,7 +62,7 @@ func main() {
 	}
 
 	defer us.Close()
-	// us.ResetDB()
+	us.AutoMigrate()
 
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
