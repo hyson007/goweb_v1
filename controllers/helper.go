@@ -8,6 +8,7 @@ import (
 
 //small letter
 func parseFormHelper(r *http.Request, dst interface{}) error {
+	// return errors.New("balh")
 	if err := r.ParseForm(); err != nil {
 		return err
 	}

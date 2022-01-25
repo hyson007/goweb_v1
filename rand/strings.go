@@ -1,8 +1,8 @@
 package rand
 
 import (
+	"crypto/rand"
 	"encoding/base64"
-	"math/rand"
 )
 
 const RememberTokenByte = 32

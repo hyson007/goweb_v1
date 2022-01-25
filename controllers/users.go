@@ -5,6 +5,7 @@ import (
 	"goweb_v1/models"
 	"goweb_v1/rand"
 	"goweb_v1/views"
+	"log"
 	"net/http"
 )
 
@@ -29,9 +30,38 @@ type Users struct {
 // this is used to rend the form where a user can create a new account
 // GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	if err := u.NewView.Render(w, nil); err != nil {
-		panic(err)
-	}
+	// type Alert struct {
+	// 	Level   string
+	// 	Message string
+	// }
+	// type Data struct {
+	// 	Alert Alert
+	// 	Yield interface{}
+	// }
+
+	// a := Alert{
+	// 	Level:   "warning",
+	// 	Message: "Successfully rendered a dynamic level",
+	// }
+
+	// d := Data{
+	// 	Alert: a,
+	// 	Yield: "hellooo from yield interface",
+	// }
+
+	// passing a into the render func
+
+	// d := views.Data{
+	// 	Alert: &views.Alert{
+	// 		Level:   views.AlertLvError,
+	// 		Message: "something went wrong",
+	// 	},
+	// }
+
+	// test template rendering error
+	//u.NewView.Render(w, "fake data")
+	u.NewView.Render(w, nil)
+
 }
 
 type SignupForm struct {
@@ -44,25 +74,49 @@ type SignupForm struct {
 // POST /signup
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var form SignupForm
+	var vd views.Data
+
+	// here we start to render a better response page to use if certain func
+	// fails
 	if err := parseFormHelper(r, &form); err != nil {
-		panic(err)
+		log.Println(err)
+		vd.SetAlert(err)
+		u.NewView.Render(w, vd)
+		return
 	}
 	user := models.User{
 		Name:     form.Name,
 		Email:    form.Email,
 		Password: form.Password,
 	}
-
+	fmt.Printf("in create controller, before create user service function, %+v\n", user)
+	// customized error response to users during user creation
 	if err := u.us.Create(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// vd.Alert = &views.Alert{
+		// 	Level: views.AlertLvError,
+		// 	// err.Error() means take the string from the generated err variable!
+		// 	// this also means, whatever message comes back will be shown to user
+		// 	Message: err.Error(),
+		// }
+		log.Println("hitting create", err)
+		vd.SetAlert(err)
+		//log.Printf("%+v\n", vd.Alert)
+		u.NewView.Render(w, vd)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// here this user is not a pointer hence need &
 	// once user created, we can just assign a cookie back
+
 	err := u.signIn(w, &user)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// at this step, if error happens, it means user account has been
+		// created but for some reason, we unable to sign them in
+		// we just redirect them to the login page and let them login
+		// this should not really happen
+		http.Redirect(w, r, "/login", http.StatusFound)
+		// http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	// fmt.Fprintln(w, user)
@@ -79,9 +133,13 @@ type LoginForm struct {
 // Login is used to verify provided email and password
 // POST /login
 func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
+	vd := views.Data{}
 	var form LoginForm
 	if err := parseFormHelper(r, &form); err != nil {
-		panic(err)
+		log.Println(err)
+		vd.SetAlert(err)
+		u.LoginView.Render(w, vd)
+		return
 	}
 	// Do something with login Form
 
@@ -90,20 +148,20 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case models.ErrNotFound:
-			fmt.Fprintln(w, "Invalid user email address")
-		case models.ErrInvalidPwd:
-			fmt.Fprintln(w, "Invalid user password")
+			vd.SetAlertText("Invalid user email address")
 		default:
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			vd.SetAlert(err)
 		}
+		u.LoginView.Render(w, vd)
 		return
 	}
 
 	// once login successfully, we can assign a cookie to user
 	err = u.signIn(w, user)
-
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// this shouldn't happen
+		vd.SetAlert(err)
+		u.LoginView.Render(w, vd)
 		return
 	}
 	// fmt.Fprintln(w, user)
@@ -136,14 +194,19 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 //convert this func to receiver on user
 //sign in is used to sign the given user in via cookies
 func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
+	fmt.Println("before sign in, user.Remember is ", user.Remember,
+		"user.RememberHash is ", user.RememberHash)
 
 	//this step ensures whatever user in DB has a tokenhash
 	if user.Remember == "" {
+
 		token, err := rand.RememberToken()
 		if err != nil {
 			return err
 		}
 		user.Remember = token
+		log.Println("test signin")
+		log.Printf("%+v", user)
 		err = u.us.Update(user)
 		if err != nil {
 			return err
@@ -156,6 +219,9 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 		HttpOnly: true,
 	}
 	http.SetCookie(w, &cookie)
+
+	fmt.Println("after sign in, user.Remember is ", user.Remember,
+		"user.RememberHash is ", user.RememberHash)
 	// fmt.Fprintln(w, user)
 	return nil
 }

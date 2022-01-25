@@ -1,7 +1,9 @@
 package views
 
 import (
+	"bytes"
 	"html/template"
+	"io"
 	"net/http"
 	"path/filepath"
 )
@@ -34,13 +36,29 @@ type View struct {
 	Layout   string
 }
 
-func (v View) Render(w http.ResponseWriter, data interface{}) error {
+func (v View) Render(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "text/html")
-	return v.Template.ExecuteTemplate(w, v.Layout, data)
+	// data is an empty interface, we want to ensure a check type in place
+
+	switch data.(type) {
+	case Data:
+		// do nothing
+	default:
+		// otherwise we assume whatever data is under Yield type
+		data = Data{
+			Yield: data,
+		}
+	}
+	// write to buffer first instead of directly send to w
+	var buf bytes.Buffer
+	if err := v.Template.ExecuteTemplate(&buf, v.Layout, data); err != nil {
+		http.Error(w, "something went wrong, pls contact support",
+			http.StatusInternalServerError)
+		return
+	}
+	io.Copy(w, &buf)
 }
 
 func (v View) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := v.Render(w, nil); err != nil {
-		panic(err)
-	}
+	v.Render(w, nil)
 }

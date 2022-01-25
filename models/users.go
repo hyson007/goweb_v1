@@ -1,7 +1,7 @@
 package models
 
 import (
-	"errors"
+	"fmt"
 	"goweb_v1/hash"
 	"goweb_v1/rand"
 	"regexp"
@@ -12,24 +12,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	// general error when resource is not found in db
-	ErrNotFound  = errors.New("models: resource not found")
-	ErrInvalidID = errors.New("models: Invalid User ID")
-	//ErrInvalidEmail = errors.New("models: Invalid User Email provided")
-	ErrInvalidPwd = errors.New("models: Invalid User Password provided")
-)
-
 //jon		@	calhoun		.	com
 // we can move this to uservalidator
 // var (
 // 	emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9._%+\-]+\.[a-z]{2,16}$`)
 // )
-
-var (
-	ErrEmailRequired = errors.New("email address is required")
-	ErrEmailInvalid  = errors.New("email address is not valid")
-)
 
 const userPWPepper = "secret-random-string"
 const hmacSecretKey = "whatever"
@@ -321,12 +308,15 @@ func (uv *userValidator) hmacRemember(user *User) error {
 		return nil
 	}
 	user.RememberHash = uv.hmac.Hash(user.Remember)
+	fmt.Printf("from hmacRemeber, user.remember is %s, setting remember hash to %s\n", user.Remember, user.RememberHash)
 	return nil
 }
 
 func (uv *userValidator) setRemIfUnset(user *User) error {
 	if user.Remember == "" {
+		fmt.Println("user remember token emptying, hitting, set rem if unset")
 		token, err := rand.RememberToken()
+		fmt.Println("new token is", token)
 		if err != nil {
 			return err
 		}
@@ -384,7 +374,7 @@ func (uv *userValidator) emailIsAvail(user *User) error {
 	// if the found user has the same ID as this user, it;s an update
 	// and this is the same user
 	if user.ID != existing.ID {
-		return errors.New("models: email address is already taken")
+		return ErrEmailTaken
 	}
 	return nil
 }
@@ -394,21 +384,21 @@ func (uv *userValidator) pwdMinlen(user *User) error {
 		return nil
 	}
 	if len(user.Password) < 8 {
-		return errors.New("password too short")
+		return ErrPwdShort
 	}
 	return nil
 }
 
 func (uv *userValidator) pwdRequired(user *User) error {
 	if user.Password == "" {
-		return errors.New("password is required")
+		return ErrPwdRequired
 	}
 	return nil
 }
 
 func (uv *userValidator) pwdHashRequired(user *User) error {
 	if user.PasswordHash == "" {
-		return errors.New("password Hash is required")
+		return ErrPwdHashRequired
 	}
 	return nil
 }
@@ -422,14 +412,14 @@ func (uv *userValidator) rememberMinBytes(user *User) error {
 		return err
 	}
 	if n < 32 {
-		return errors.New("models: remember token must be at least 32 bytes")
+		return ErrRemToken
 	}
 	return nil
 }
 
 func (uv *userValidator) rememberHashRequired(user *User) error {
 	if user.RememberHash == "" {
-		return errors.New("rememberhash is required")
+		return ErrRemHashToken
 	}
 	return nil
 }
