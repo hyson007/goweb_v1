@@ -18,6 +18,8 @@ const (
 	ErrPwdHashRequired modelError = "models: password Hash is required"
 	ErrRemToken        modelError = "models: remember token must be at least 32 bytes"
 	ErrRemHashToken    modelError = "models: rememberhash is required"
+	ErrUserIDRequired  modelError = "models: User ID is required"
+	ErrTitleRequired   modelError = "models: Title is required"
 )
 
 type modelError string

@@ -229,14 +229,17 @@ func (u *Users) signIn(w http.ResponseWriter, user *models.User) error {
 //CookieTest is used to display cookies set on the current user
 func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("remember_token")
+
+	// if unable to find the user cookie, then we redirect them
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
 	}
 
 	user, err := u.us.ByRemember(cookie.Value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	fmt.Fprintln(w, "remember_token cookie is", cookie.Value)
 	fmt.Fprintln(w, user)
 }

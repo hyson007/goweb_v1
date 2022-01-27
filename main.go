@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"goweb_v1/controllers"
+	"goweb_v1/middleware"
 	"goweb_v1/models"
 	"net/http"
 
@@ -56,17 +57,25 @@ func main() {
 	// signupView = controllers.NewUsers().NewView
 	psqlinfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
-	us, err := models.NewUserService(psqlinfo)
+	// us, err := models.NewUserService(psqlinfo)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	svc, err := models.NewService(psqlinfo)
 	if err != nil {
 		panic(err)
 	}
 
-	defer us.Close()
-	us.AutoMigrate()
+	defer svc.Close()
+	svc.AutoMigrate()
 
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(us)
+	usersC := controllers.NewUsers(svc.User)
+	galleryC := controllers.NewGallery(svc.Gallery)
+	requireUseMw := middleware.RequireUser{UserService: svc.User}
+
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
 
@@ -80,6 +89,11 @@ func main() {
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
 	r.HandleFunc("/faq", faq).Methods("GET")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
+
+	//Gallery routes
+	// galleryNew := requireUseMw.Apply(galleryC.NewView)
+	r.Handle("/galleries/new", requireUseMw.Apply(galleryC.NewView)).Methods("GET")
+	r.HandleFunc("/galleries", requireUseMw.ApplyFn(galleryC.Create)).Methods("POST")
 	http.ListenAndServe(":3000", r)
 
 }

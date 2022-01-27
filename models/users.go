@@ -36,12 +36,12 @@ type UserDB interface {
 	Update(user *User) error
 	Delete(id uint) error
 
-	//Used to close DB connection
-	Close() error
+	// 	//Used to close DB connection
+	// 	Close() error
 
-	//Migration helpers
-	AutoMigrate() error
-	DestructiveReset() error
+	// 	//Migration helpers
+	// 	AutoMigrate() error
+	// 	DestructiveReset() error
 }
 
 // these lines are checker whether a particular struct type matches with interface
@@ -96,13 +96,9 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 	return foundUser, nil
 }
 
-func NewUserService(connectionInfo string) (UserService, error) {
-	ug, err := newUserGorm(connectionInfo)
-	if err != nil {
-		return nil, err
-	}
+func NewUserService(db *gorm.DB) UserService {
+	ug := newUserGorm(db)
 	hmac := hash.NewHMAC(hmacSecretKey)
-
 	uv := newUserValidator(ug, hmac)
 	// uv := &userValidator{
 	// 	UserDB: ug,
@@ -122,7 +118,7 @@ func NewUserService(connectionInfo string) (UserService, error) {
 	// which has implemented what method that interface demand!!!
 	return &userService{
 		UserDB: uv,
-	}, nil
+	}
 }
 
 // this name can be anything
@@ -430,12 +426,13 @@ type userGorm struct {
 	//hmac hash.HMAC
 }
 
-func newUserGorm(connectionInfo string) (*userGorm, error) {
-	db, err := gorm.Open("postgres", connectionInfo)
-	db.LogMode(true)
-	if err != nil {
-		return nil, err
-	}
+func newUserGorm(db *gorm.DB) *userGorm {
+	// db, err := gorm.Open("postgres", connectionInfo)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// db.LogMode(true)
 	// defer db.Close()
 	// it's not good to leave this close in this function, but rather it
 	// should be in a seperate func to close it
@@ -444,7 +441,7 @@ func newUserGorm(connectionInfo string) (*userGorm, error) {
 	//hmac := hash.NewHMAC(hmacSecretKey)
 	return &userGorm{
 		db: db,
-	}, nil
+	}
 }
 
 func (ug *userGorm) ByID(id uint) (*User, error) {
@@ -583,7 +580,7 @@ func (ug *userGorm) Update(u *User) error {
 	return ug.db.Save(u).Error
 }
 
-// delete user
+//delete user
 // func (us *UserService) Delete(id uint) error {
 // 	if id == 0 {
 // 		return ErrInvalidID
@@ -596,30 +593,30 @@ func (ug *userGorm) Delete(id uint) error {
 	return ug.db.Delete(&user).Error
 }
 
-// close user Service DB connection, note how this is a function for UserService struct, rather than a new function.
+// // close user Service DB connection, note how this is a function for UserService struct, rather than a new function.
 
-// func (us *UserService) Close() error {
-// 	return us.db.Close()
+// // func (us *UserService) Close() error {
+// // 	return us.db.Close()
+// // }
+// func (ug *userGorm) Close() error {
+// 	return ug.db.Close()
 // }
-func (ug *userGorm) Close() error {
-	return ug.db.Close()
-}
 
-// Drop table and then auto migrate
-// func (us *UserService) ResetDB() {
-// 	us.db.DropTableIfExists(&User{})
-// 	us.db.AutoMigrate(&User{})
+// // Drop table and then auto migrate
+// // func (us *UserService) ResetDB() {
+// // 	us.db.DropTableIfExists(&User{})
+// // 	us.db.AutoMigrate(&User{})
+// // }
+// func (ug *userGorm) DestructiveReset() error {
+// 	if err := ug.db.DropTableIfExists(&User{}).Error; err != nil {
+// 		return err
+// 	}
+// 	return ug.AutoMigrate()
 // }
-func (ug *userGorm) DestructiveReset() error {
-	if err := ug.db.DropTableIfExists(&User{}).Error; err != nil {
-		return err
-	}
-	return ug.AutoMigrate()
-}
 
-func (ug *userGorm) AutoMigrate() error {
-	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
-		return err
-	}
-	return nil
-}
+// func (ug *userGorm) AutoMigrate() error {
+// 	if err := ug.db.AutoMigrate(&User{}).Error; err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
