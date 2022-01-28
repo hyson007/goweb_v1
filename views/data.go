@@ -1,5 +1,7 @@
 package views
 
+import "goweb_v1/models"
+
 const (
 	AlertLvError    = "danger"
 	AlertLvWarning  = "warning"
@@ -19,6 +21,10 @@ type Data struct {
 	// setting to pointer can make it to nil
 	// which can benefit the condition checking in bootstrap template
 	Alert *Alert
+
+	//by passing the user into Data struct will help to identify
+	//if a given user is logged in or not.
+	User  *models.User
 	Yield interface{}
 }
 

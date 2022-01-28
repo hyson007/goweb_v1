@@ -1,0 +1,27 @@
+{{ define "yield"}}
+{{/* {{.Hello}} */}}
+{{/* <h1> {{.}} </h1> */}}
+    <div class="row">
+        <div class="offset-md-3 col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary bg-gradient text-white"> Edit your gallery </div>
+                <div class="card-body">
+                    {{template "editGalleryForm" .}}
+                </div>
+            </div>
+        </div>
+    </div>
+{{end}}
+
+{{ define "editGalleryForm"}}
+<form action="/galleries/{{.ID}}/update" method="POST">
+  <div class="form-group">
+    <label for="title" class="form-label">Title</label>
+    <input type="text" class="form-control" name="title" id="title" placeholder="what's the title of this gallery" value="{{.Title}}">
+  </div>
+  <button type="submit" class="btn btn-primary">Update</button>
+</form>
+<form action="/galleries/{{.ID}}/delete" method="POST">
+  <button type="submit" class="btn btn-danger">Delete</button>
+</form>
+{{end}}

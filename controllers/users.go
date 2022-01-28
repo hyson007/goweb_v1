@@ -59,8 +59,8 @@ func (u *Users) New(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// test template rendering error
-	//u.NewView.Render(w, "fake data")
-	u.NewView.Render(w, nil)
+	//u.NewView.Render(w, r, "fake data")
+	u.NewView.Render(w, r, nil)
 
 }
 
@@ -81,7 +81,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	if err := parseFormHelper(r, &form); err != nil {
 		log.Println(err)
 		vd.SetAlert(err)
-		u.NewView.Render(w, vd)
+		u.NewView.Render(w, r, vd)
 		return
 	}
 	user := models.User{
@@ -101,7 +101,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		log.Println("hitting create", err)
 		vd.SetAlert(err)
 		//log.Printf("%+v\n", vd.Alert)
-		u.NewView.Render(w, vd)
+		u.NewView.Render(w, r, vd)
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -122,7 +122,8 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintln(w, user)
 
 	//redirect user to cookietest page
-	http.Redirect(w, r, "/cookietest", http.StatusFound)
+	// http.Redirect(w, r, "/cookietest", http.StatusFound)
+	http.Redirect(w, r, "/galleries", http.StatusFound)
 }
 
 type LoginForm struct {
@@ -138,7 +139,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	if err := parseFormHelper(r, &form); err != nil {
 		log.Println(err)
 		vd.SetAlert(err)
-		u.LoginView.Render(w, vd)
+		u.LoginView.Render(w, r, vd)
 		return
 	}
 	// Do something with login Form
@@ -152,7 +153,7 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		default:
 			vd.SetAlert(err)
 		}
-		u.LoginView.Render(w, vd)
+		u.LoginView.Render(w, r, vd)
 		return
 	}
 
@@ -161,13 +162,14 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// this shouldn't happen
 		vd.SetAlert(err)
-		u.LoginView.Render(w, vd)
+		u.LoginView.Render(w, r, vd)
 		return
 	}
 	// fmt.Fprintln(w, user)
 
 	//redirect user to cookietest page
-	http.Redirect(w, r, "/cookietest", http.StatusFound)
+	// http.Redirect(w, r, "/cookietest", http.StatusFound)
+	http.Redirect(w, r, "/galleries", http.StatusFound)
 
 	// if no err and we are going to return a email cookie first
 	// this setcookie must happen before Fprint

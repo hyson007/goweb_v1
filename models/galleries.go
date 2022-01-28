@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 )
 
@@ -19,7 +21,11 @@ type galleryService struct {
 }
 
 type GalleryDB interface {
+	ByID(id uint) (*Gallery, error)
+	ByUserID(userID uint) ([]Gallery, error)
 	Create(gallery *Gallery) error
+	Update(gallery *Gallery) error
+	Delete(id uint) error
 }
 
 func NewGalleryservice(db *gorm.DB) GalleryService {
@@ -78,6 +84,55 @@ func (gv *galleryValidator) Create(g *Gallery) error {
 	return gv.GalleryDB.Create(g)
 }
 
+func (gv *galleryValidator) Update(g *Gallery) error {
+	// thi varadic will work even without passing any function
+	if err := runGalleryValFuncs(g,
+		gv.TitleRequired,
+		gv.UserIDRequired,
+	); err != nil {
+		return err
+	}
+	return gv.GalleryDB.Update(g)
+}
+
+// delete user
+func (gv *galleryValidator) Delete(id uint) error {
+	if id < 0 {
+		return ErrInvalidID
+	}
+	return gv.GalleryDB.Delete(id)
+}
+
 func (gg *galleryGorm) Create(gallery *Gallery) error {
 	return gg.db.Create(gallery).Error
+}
+
+func (gg *galleryGorm) Update(gallery *Gallery) error {
+	fmt.Println("from gg update", gallery)
+	return gg.db.Save(gallery).Error
+}
+
+func (gg *galleryGorm) Delete(id uint) error {
+	g := Gallery{Model: gorm.Model{ID: id}}
+	return gg.db.Delete(&g).Error
+}
+
+func (gg *galleryGorm) ByID(id uint) (*Gallery, error) {
+	var g Gallery
+	err := gg.db.Where("id = ?", id).First(&g).Error
+	fmt.Println("gallerygorm by ID", g, err)
+	switch err {
+	case nil:
+		return &g, nil
+	case gorm.ErrRecordNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, err
+	}
+}
+
+func (gg *galleryGorm) ByUserID(UserID uint) ([]Gallery, error) {
+	var galleries []Gallery
+	gg.db.Where("user_id = ?", UserID).Find(&galleries)
+	return galleries, nil
 }

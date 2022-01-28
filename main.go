@@ -70,11 +70,21 @@ func main() {
 	defer svc.Close()
 	svc.AutoMigrate()
 
+	// for the name route to work, we have to declear the gallery controller
+	// first before then we define mux new router
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
 	usersC := controllers.NewUsers(svc.User)
-	galleryC := controllers.NewGallery(svc.Gallery)
-	requireUseMw := middleware.RequireUser{UserService: svc.User}
+
+	userMw := middleware.User{
+		UserService: svc.User,
+	}
+	requireUseMw := middleware.RequireUser{
+		User: userMw,
+	}
+
+	// pass in the r into gallery
+	galleryC := controllers.NewGallery(svc.Gallery, r)
 
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
@@ -92,8 +102,14 @@ func main() {
 
 	//Gallery routes
 	// galleryNew := requireUseMw.Apply(galleryC.NewView)
+	r.Handle("/galleries", requireUseMw.ApplyFn(galleryC.Index)).Methods("GET")
 	r.Handle("/galleries/new", requireUseMw.Apply(galleryC.NewView)).Methods("GET")
 	r.HandleFunc("/galleries", requireUseMw.ApplyFn(galleryC.Create)).Methods("POST")
-	http.ListenAndServe(":3000", r)
+	r.HandleFunc("/galleries/{id:[0-9]+}/edit", requireUseMw.ApplyFn(galleryC.Edit)).Methods("GET")
+	r.HandleFunc("/galleries/{id:[0-9]+}/update", requireUseMw.ApplyFn(galleryC.Update)).Methods("POST")
+	r.HandleFunc("/galleries/{id:[0-9]+}/delete", requireUseMw.ApplyFn(galleryC.Delete)).Methods("POST")
+	r.HandleFunc("/galleries/{id:[0-9]+}", galleryC.Show).Methods("GET").Name("show_gallery")
+
+	http.ListenAndServe(":3000", userMw.Apply(r))
 
 }
