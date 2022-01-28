@@ -5,11 +5,17 @@ import (
 	"goweb_v1/context"
 	"goweb_v1/models"
 	"goweb_v1/views"
+	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
+)
+
+const (
+	maxMultipartMem = 1 << 20 // 1 megabyte
 )
 
 func NewGallery(gs models.GalleryService, r *mux.Router) *Gallery {
@@ -164,6 +170,72 @@ func (g *Gallery) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	// TODO: redirect to index page
 	fmt.Fprintln(w, "successfully delete! ")
+}
+
+// POST /galleries/:id/images
+func (g *Gallery) ImageUpload(w http.ResponseWriter, r *http.Request) {
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	// verify if the user can access the gallery or not
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery Not found", http.StatusNotFound)
+		return
+	}
+
+	// we need to parse the multi-part form
+	err = r.ParseMultipartForm(maxMultipartMem)
+	var vd views.Data
+	vd.Yield = gallery
+	if err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+
+	//create folder, only need to run one time
+	galleryPath := fmt.Sprintf("images/galleries/%v/", gallery.ID)
+	err = os.MkdirAll(galleryPath, 0755)
+	if err != nil {
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+
+	files := r.MultipartForm.File["images"]
+	for _, f := range files {
+		// open file
+		file, err := f.Open()
+		if err != nil {
+			vd.SetAlert(err)
+			g.EditView.Render(w, r, vd)
+			return
+		}
+		defer file.Close()
+
+		//f.Filename comes from form
+		//create dst file
+		dst, err := os.Create(galleryPath + f.Filename)
+		if err != nil {
+			vd.SetAlert(err)
+			g.EditView.Render(w, r, vd)
+			return
+		}
+		defer dst.Close()
+
+		//copy over
+		_, err = io.Copy(dst, file)
+		if err != nil {
+			vd.SetAlert(err)
+			g.EditView.Render(w, r, vd)
+			return
+		}
+		fmt.Fprintln(w, "file sucessfully uploaded")
+
+	}
 }
 
 // POST /galleries

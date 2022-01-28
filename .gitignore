@@ -1,1 +1,5 @@
+#Don't include our binary
 goweb_v1
+
+#Don't include images
+**/images/**
