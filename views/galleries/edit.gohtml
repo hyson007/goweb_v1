@@ -4,6 +4,9 @@
     <div class="row">
         <div class="col-md-10 offset-md-1">
           <h2> Edit your gallery </h2>
+          <a href="/galleries/{{.ID}}">
+            View this gallery
+          </a>
           <hr>
         </div>
     <div class="row">
@@ -74,5 +77,30 @@
 
 
 {{ define "galleryImages" }}
-<p> Coming soon ... </p>
+<div class="row">
+{{/* {{range .Images}} */}}
+{{ range .ImageSplit 6}}
+    <div class="col-md-2">
+        {{range .}}
+        <a href="{{.}}">
+            <img src="{{.Path}}" class="thumbnail">
+        </a>
+        {{template "deleteImagesForm" .}}
+        {{end}}
+    </div>
+{{end}}
+</div>
+
+<style>
+  .thumbnail {
+    width: 100%;
+    }
+</style>
+{{end}}
+
+
+{{define "deleteImagesForm"}}
+<form action="/galleries/{{.GalleryID}}/images/{{.Filename}}/delete" method="POST">
+  <button type="submit" class="btn btn-danger">Delete</button>
+</form>
 {{end}}

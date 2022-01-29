@@ -84,7 +84,7 @@ func main() {
 	}
 
 	// pass in the r into gallery
-	galleryC := controllers.NewGallery(svc.Gallery, r)
+	galleryC := controllers.NewGallery(svc.Gallery, svc.Image, r)
 
 	r.Handle("/", staticC.Home).Methods("GET")
 	r.Handle("/contact", staticC.Contact).Methods("GET")
@@ -100,6 +100,13 @@ func main() {
 	r.HandleFunc("/faq", faq).Methods("GET")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 
+	//images routes
+	// we can get by by just using http.Dir("./") as the image path matches
+	// with our FS
+	// but we do this just to show strip prefix which works like a middleware
+	imageHandler := http.FileServer(http.Dir("./images"))
+	r.PathPrefix("/images/").Handler(http.StripPrefix("/images/", imageHandler))
+
 	//Gallery routes
 	// galleryNew := requireUseMw.Apply(galleryC.NewView)
 	r.Handle("/galleries", requireUseMw.ApplyFn(galleryC.Index)).Methods("GET")
@@ -112,6 +119,7 @@ func main() {
 
 	//images POST
 	r.HandleFunc("/galleries/{id:[0-9]+}/images", requireUseMw.ApplyFn(galleryC.ImageUpload)).Methods("POST")
+	r.HandleFunc("/galleries/{id:[0-9]+}/images/{filename}/delete", requireUseMw.ApplyFn(galleryC.ImageDelete)).Methods("POST")
 	http.ListenAndServe(":3000", userMw.Apply(r))
 
 }

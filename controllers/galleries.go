@@ -5,10 +5,8 @@ import (
 	"goweb_v1/context"
 	"goweb_v1/models"
 	"goweb_v1/views"
-	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
@@ -18,7 +16,7 @@ const (
 	maxMultipartMem = 1 << 20 // 1 megabyte
 )
 
-func NewGallery(gs models.GalleryService, r *mux.Router) *Gallery {
+func NewGallery(gs models.GalleryService, is models.ImageService, r *mux.Router) *Gallery {
 	return &Gallery{
 		NewView:   views.NewView("bootstrap", "views/galleries/new.gohtml"),
 		ShowView:  views.NewView("bootstrap", "views/galleries/show.gohtml"),
@@ -26,6 +24,7 @@ func NewGallery(gs models.GalleryService, r *mux.Router) *Gallery {
 		IndexView: views.NewView("bootstrap", "views/galleries/index.gohtml"),
 		gs:        gs,
 		r:         r,
+		is:        is,
 	}
 }
 
@@ -36,6 +35,7 @@ type Gallery struct {
 	IndexView *views.View
 	gs        models.GalleryService
 	r         *mux.Router
+	is        models.ImageService
 }
 
 func (g *Gallery) New(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (g *Gallery) Index(w http.ResponseWriter, r *http.Request) {
 // hence we write a new func galleryByID
 func (g *Gallery) Show(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
-	fmt.Println("gallery Show", gallery, err)
+	// fmt.Println("gallery Show", gallery, err)
 	if err != nil {
 		return
 	}
@@ -92,8 +92,8 @@ func (g *Gallery) Edit(w http.ResponseWriter, r *http.Request) {
 
 	// verify if the user can access the gallery or not
 	user := context.User(r.Context())
-	fmt.Println("gallery Edit user", user)
-	fmt.Println("gallery Edit", gallery.ID, err)
+	// fmt.Println("gallery Edit user", user)
+	// fmt.Println("gallery Edit", gallery.ID, err)
 	if gallery.UserID != user.ID {
 		http.Error(w, "Gallery Not found", http.StatusNotFound)
 		return
@@ -104,7 +104,7 @@ func (g *Gallery) Edit(w http.ResponseWriter, r *http.Request) {
 	vd.Yield = gallery
 	// make vd users aware
 	// vd.User = user
-	fmt.Println("from edit", vd)
+	// fmt.Println("from edit", vd)
 	g.EditView.Render(w, r, vd)
 	// fmt.Fprintln(w, gallery)
 }
@@ -197,13 +197,13 @@ func (g *Gallery) ImageUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//create folder, only need to run one time
-	galleryPath := fmt.Sprintf("images/galleries/%v/", gallery.ID)
-	err = os.MkdirAll(galleryPath, 0755)
-	if err != nil {
-		vd.SetAlert(err)
-		g.EditView.Render(w, r, vd)
-		return
-	}
+	// galleryPath := fmt.Sprintf("images/galleries/%v/", gallery.ID)
+	// err = os.MkdirAll(galleryPath, 0755)
+	// if err != nil {
+	// 	vd.SetAlert(err)
+	// 	g.EditView.Render(w, r, vd)
+	// 	return
+	// }
 
 	files := r.MultipartForm.File["images"]
 	for _, f := range files {
@@ -215,27 +215,54 @@ func (g *Gallery) ImageUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer file.Close()
-
-		//f.Filename comes from form
-		//create dst file
-		dst, err := os.Create(galleryPath + f.Filename)
+		err = g.is.CreateImage(gallery.ID, file, f.Filename)
 		if err != nil {
 			vd.SetAlert(err)
 			g.EditView.Render(w, r, vd)
 			return
 		}
-		defer dst.Close()
 
-		//copy over
-		_, err = io.Copy(dst, file)
-		if err != nil {
-			vd.SetAlert(err)
-			g.EditView.Render(w, r, vd)
-			return
-		}
-		fmt.Fprintln(w, "file sucessfully uploaded")
+		http.Redirect(w, r, "/galleries", http.StatusFound)
 
 	}
+}
+
+// POST /galleries/:id/images/:filename/delete
+// this way no need to post data in payload
+func (g *Gallery) ImageDelete(w http.ResponseWriter, r *http.Request) {
+	//Get gallery
+	gallery, err := g.galleryByID(w, r)
+	if err != nil {
+		return
+	}
+
+	// verify if the user can access the gallery or not
+	user := context.User(r.Context())
+	if gallery.UserID != user.ID {
+		http.Error(w, "Gallery Not found", http.StatusNotFound)
+		return
+	}
+
+	FileName := mux.Vars(r)["filename"]
+	// fmt.Println(FileName)
+
+	i := models.Image{
+		Filename:  FileName,
+		GalleryID: gallery.ID,
+	}
+
+	_ = i
+	var vd views.Data
+	// delete from os
+	err = g.is.Delete(&i)
+	if err != nil {
+		fmt.Println(err)
+		vd.SetAlert(err)
+		g.EditView.Render(w, r, vd)
+		return
+	}
+	path := fmt.Sprintf("%v", gallery.ID)
+	http.Redirect(w, r, "/galleries/"+path, http.StatusFound)
 }
 
 // POST /galleries
@@ -286,7 +313,7 @@ func (g *Gallery) galleryByID(w http.ResponseWriter, r *http.Request) (*models.G
 	idStr := vars["id"]
 	// this id is string now, we need to convert it to int
 	id, err := strconv.Atoi(idStr)
-	fmt.Println("before lookup, galleryByID, id is:", id, "error is: ", err)
+	// fmt.Println("before lookup, galleryByID, id is:", id, "error is: ", err)
 	if err != nil {
 		http.Error(w, "Invalid gallery ID", http.StatusNotFound)
 		return nil, err
@@ -294,7 +321,7 @@ func (g *Gallery) galleryByID(w http.ResponseWriter, r *http.Request) (*models.G
 
 	// otherwise we look up this gallery id
 	gallery, err := g.gs.ByID(uint(id))
-	fmt.Println("after lookup, galleryByID gallery is:", gallery, "error is: ", err)
+	// fmt.Println("after lookup, galleryByID gallery is:", gallery, "error is: ", err)
 	if err != nil {
 		switch err {
 		case models.ErrNotFound:
@@ -305,5 +332,12 @@ func (g *Gallery) galleryByID(w http.ResponseWriter, r *http.Request) (*models.G
 		}
 		return nil, err
 	}
+	images, err := g.is.ByGalleryID(gallery.ID)
+	if err != nil {
+		gallery.Images = []models.Image{}
+	} else {
+		gallery.Images = images
+	}
+
 	return gallery, nil
 }

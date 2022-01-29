@@ -304,13 +304,13 @@ func (uv *userValidator) hmacRemember(user *User) error {
 		return nil
 	}
 	user.RememberHash = uv.hmac.Hash(user.Remember)
-	fmt.Printf("from hmacRemeber, user.remember is %s, setting remember hash to %s\n", user.Remember, user.RememberHash)
+	// fmt.Printf("from hmacRemeber, user.remember is %s, setting remember hash to %s\n", user.Remember, user.RememberHash)
 	return nil
 }
 
 func (uv *userValidator) setRemIfUnset(user *User) error {
 	if user.Remember == "" {
-		fmt.Println("user remember token emptying, hitting, set rem if unset")
+		// fmt.Println("user remember token emptying, hitting, set rem if unset")
 		token, err := rand.RememberToken()
 		fmt.Println("new token is", token)
 		if err != nil {

@@ -14,6 +14,7 @@ func NewService(connectionInfo string) (*Services, error) {
 		// otherwise we will get nil pointer error
 		Gallery: NewGalleryservice(db),
 		User:    NewUserService(db),
+		Image:   NewImageService(),
 		db:      db,
 	}, nil
 }
@@ -21,6 +22,7 @@ func NewService(connectionInfo string) (*Services, error) {
 type Services struct {
 	Gallery GalleryService
 	User    UserService
+	Image   ImageService
 	db      *gorm.DB
 }
 

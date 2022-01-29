@@ -2,6 +2,7 @@ package views
 
 import (
 	"bytes"
+	"fmt"
 	"goweb_v1/context"
 	"html/template"
 	"io"
@@ -55,7 +56,9 @@ func (v View) Render(w http.ResponseWriter, r *http.Request, data interface{}) {
 	vd.User = context.User(r.Context())
 	// write to buffer first instead of directly send to w
 	var buf bytes.Buffer
+	// fmt.Printf("%+v\n", vd.Yield)
 	if err := v.Template.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
+		fmt.Println(err)
 		http.Error(w, "something went wrong, pls contact support",
 			http.StatusInternalServerError)
 		return
