@@ -5,8 +5,10 @@ import (
 	"goweb_v1/controllers"
 	"goweb_v1/middleware"
 	"goweb_v1/models"
+	"goweb_v1/rand"
 	"net/http"
 
+	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
 )
 
@@ -70,6 +72,12 @@ func main() {
 	defer svc.Close()
 	svc.AutoMigrate()
 
+	//csrf token, which works like middleware but it's a function
+	//csrfMW := csrf.Protect([]byte("32-byte-long-auth-key"))
+	isProd := false
+	randByte, _ := rand.Bytes(32)
+	csrfMW := csrf.Protect(randByte, csrf.Secure(isProd))
+
 	// for the name route to work, we have to declear the gallery controller
 	// first before then we define mux new router
 	r := mux.NewRouter()
@@ -100,6 +108,10 @@ func main() {
 	r.HandleFunc("/faq", faq).Methods("GET")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 
+	//set up routes for css
+	cssHandler := http.FileServer(http.Dir("./assets"))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", cssHandler))
+
 	//images routes
 	// we can get by by just using http.Dir("./") as the image path matches
 	// with our FS
@@ -120,6 +132,6 @@ func main() {
 	//images POST
 	r.HandleFunc("/galleries/{id:[0-9]+}/images", requireUseMw.ApplyFn(galleryC.ImageUpload)).Methods("POST")
 	r.HandleFunc("/galleries/{id:[0-9]+}/images/{filename}/delete", requireUseMw.ApplyFn(galleryC.ImageDelete)).Methods("POST")
-	http.ListenAndServe(":3000", userMw.Apply(r))
+	http.ListenAndServe(":3000", csrfMW(userMw.Apply(r)))
 
 }

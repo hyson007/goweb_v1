@@ -54,6 +54,7 @@ func (g *Gallery) Index(w http.ResponseWriter, r *http.Request) {
 	user := context.User(r.Context())
 	galleries, err := g.gs.ByUserID(user.ID)
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "something went wrong", http.StatusInternalServerError)
 		return
 	}

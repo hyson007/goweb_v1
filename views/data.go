@@ -1,6 +1,9 @@
 package views
 
-import "goweb_v1/models"
+import (
+	"goweb_v1/models"
+	"log"
+)
 
 const (
 	AlertLvError    = "danger"
@@ -41,6 +44,8 @@ func (d *Data) SetAlert(err error) {
 			Message: pErr.Public(),
 		}
 	} else {
+		// means this is not public error
+		log.Println(err)
 		d.Alert = &Alert{
 			Level:   AlertLvError,
 			Message: AlertMsgGeneric,

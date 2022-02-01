@@ -4,6 +4,7 @@ import (
 	"goweb_v1/context"
 	"goweb_v1/models"
 	"net/http"
+	"strings"
 )
 
 type User struct {
@@ -16,6 +17,15 @@ func (mw *User) Apply(next http.Handler) http.HandlerFunc {
 
 func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		// if the user is requesting static assert or image
+		// we no need to lookup the current user
+		if strings.HasPrefix(path, "/assets/") ||
+			strings.HasPrefix(path, "/images/") {
+			next(w, r)
+			return
+		}
+
 		cookie, err := r.Cookie("remember_token")
 
 		// if unable to find the user cookie, we assume user never login
