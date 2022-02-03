@@ -74,6 +74,12 @@ func (v View) Render(w http.ResponseWriter, r *http.Request, data interface{}) {
 			Yield: data,
 		}
 	}
+	// implement alert awareness for render
+	if alert := getAlert(r); alert != nil {
+		vd.Alert = alert
+		clearAlert(w)
+	}
+
 	vd.User = context.User(r.Context())
 
 	// csrf template part

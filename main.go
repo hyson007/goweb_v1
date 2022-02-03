@@ -105,6 +105,9 @@ func main() {
 	//note the two different ways to do this
 	r.Handle("/login", usersC.LoginView).Methods("GET")
 	r.HandleFunc("/login", usersC.Login).Methods("POST")
+	r.HandleFunc("/logout",
+		requireUseMw.ApplyFn(usersC.Logout)).Methods("POST")
+
 	r.HandleFunc("/faq", faq).Methods("GET")
 	r.HandleFunc("/cookietest", usersC.CookieTest).Methods("GET")
 

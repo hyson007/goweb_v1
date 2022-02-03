@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"fmt"
+	"goweb_v1/context"
 	"goweb_v1/models"
 	"goweb_v1/rand"
 	"goweb_v1/views"
 	"log"
 	"net/http"
+	"time"
 )
 
 // NewUsers is used to create a new user controller
@@ -123,7 +125,14 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 
 	//redirect user to cookietest page
 	// http.Redirect(w, r, "/cookietest", http.StatusFound)
-	http.Redirect(w, r, "/galleries", http.StatusFound)
+
+	// redirect user to gallery page once login, also create a success alert
+	// render must be updated to use alert
+	alert := views.Alert{
+		Level:   views.AlertLvSuccess,
+		Message: "Welcome to LensLocked.com",
+	}
+	views.RedirectAlert(w, r, "/galleries", http.StatusFound, alert)
 }
 
 type LoginForm struct {
@@ -244,4 +253,28 @@ func (u *Users) CookieTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintln(w, user)
+}
+
+// Logout is used to clear current user cookie and then will update user
+// remember token to a new remember	token
+// POST /logout
+func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
+	// generate a new cookie
+	cookie := http.Cookie{
+		Name:     "remember_token",
+		Value:    "",
+		Expires:  time.Now(),
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+
+	user := context.User(r.Context())
+
+	// update user remember token
+	token, _ := rand.RememberToken()
+	user.Remember = token
+	u.us.Update(user)
+
+	// redirect to home page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
